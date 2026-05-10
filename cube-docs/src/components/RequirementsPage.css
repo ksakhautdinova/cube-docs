@@ -564,6 +564,82 @@
   margin-top: 15px;
 }
 
+.measure-dax-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.measure-dax-item {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.measure-dax-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.copy-code-btn {
+  border: 1px solid var(--border-default);
+  background: #fff;
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.copy-code-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.measure-dax-item pre {
+  margin: 0;
+  padding: 10px;
+  background: #111827;
+  color: #e5e7eb;
+  white-space: pre-wrap;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  min-height: 120px;
+}
+
+.dax-highlighted-code {
+  white-space: pre-wrap;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.dax-highlighted-line {
+  display: block;
+}
+
+.dax-token-keyword {
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.dax-token-method {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.dax-token-bracket {
+  color: #f87171;
+  font-weight: 700;
+}
+
 .measures-table-wrapper {
   overflow-x: auto;
 }
@@ -984,5 +1060,9 @@
 
   .work-block-header button {
     width: 100%;
+  }
+
+  .measure-dax-card {
+    grid-template-columns: 1fr;
   }
 }

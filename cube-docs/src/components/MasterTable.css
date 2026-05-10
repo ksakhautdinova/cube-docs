@@ -1,0 +1,160 @@
+.master-table {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.master-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.master-table-search,
+.master-table-filter select {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.master-table-search {
+  width: 100%;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.master-table-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.master-table-grid {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.master-table-grid thead {
+  background: var(--color-dark);
+  color: #fff;
+}
+
+.master-table-grid th,
+.master-table-grid td {
+  border-bottom: 1px solid var(--border-default);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+
+.master-table-grid th {
+  text-align: left;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.master-table-grid th.is-sortable {
+  cursor: pointer;
+}
+
+.master-table-grid th span {
+  margin-right: 6px;
+}
+
+.master-table-row:hover {
+  background: var(--bg-subtle);
+}
+
+.master-table-col-expand,
+.master-table-col-actions {
+  width: 56px;
+  text-align: center;
+}
+
+.master-table-icon-btn {
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.master-table-input,
+.master-table-textarea {
+  width: 100%;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 7px 8px;
+  font-size: 0.9rem;
+  background: #fff;
+}
+
+.master-table-textarea {
+  font-family: Consolas, 'Courier New', monospace;
+  resize: vertical;
+}
+
+.master-table-actions {
+  position: relative;
+}
+
+.master-table-actions-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 190px;
+  background: #fff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  z-index: 5;
+  overflow: hidden;
+}
+
+.master-table-action-item {
+  border: none;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.master-table-action-item:hover {
+  background: var(--bg-subtle);
+}
+
+.master-table-action-item.is-danger {
+  color: var(--color-error);
+}
+
+.master-table-expanded-row td {
+  background: var(--bg-subtle);
+}
+
+.master-table-expanded-card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 12px;
+}
+
+.master-table-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 18px;
+}

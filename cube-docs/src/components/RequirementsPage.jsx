@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { File, FileText, Plus, Save, Trash2, X } from 'lucide-react';
-import { CUBE_DATA, getEntity, getMeasuresForGroup, getRelationsForEntity } from '../mockData';
+import { Check, Copy, File, FileText, Plus, Save, Trash2, X } from 'lucide-react';
+import { CUBE_DATA, getEntity, getMeasuresForGroup } from '../mockData';
 import { RequirementV2, WorkBlock, MeasureChange, NewMeasure, NewAttribute } from '../types';
-import { exportToMarkdown, exportToDocx, exportToDocxV2, downloadFile } from '../exportService';
+import { exportToDocxV2, downloadFile } from '../exportService';
 import { storageService } from '../storageService';
+import { MasterTable } from './MasterTable';
+import { tokenizeDaxExpression } from '../utils/daxFormatter';
 import './RequirementsPage.css';
 
 const collator = new Intl.Collator(['ru-RU', 'en-US'], {
@@ -243,6 +245,33 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
     onUpdate({ measureChanges: updatedChanges });
   };
 
+  const handleMeasureAction = (actionId, row) => {
+    const updatedChanges = block.measureChanges.map((mc) => {
+      if (mc.measureId !== row.measureId) return mc;
+      if (actionId === 'rename') {
+        return { ...mc, needsRename: true, needsFormulaChange: false };
+      }
+      if (actionId === 'formula') {
+        return { ...mc, needsRename: false, needsFormulaChange: true };
+      }
+      if (actionId === 'both') {
+        return { ...mc, needsRename: true, needsFormulaChange: true };
+      }
+      if (actionId === 'reset') {
+        return {
+          ...mc,
+          needsRename: false,
+          needsFormulaChange: false,
+          newName: '',
+          newTranslation: '',
+          newExpression: ''
+        };
+      }
+      return mc;
+    });
+    onUpdate({ measureChanges: updatedChanges });
+  };
+
   const handleAddNewMeasure = () => {
     onUpdate({ newMeasures: [...block.newMeasures, new NewMeasure()] });
   };
@@ -424,80 +453,119 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
             {selectedEntity && isFactTable && (
               <div className="measures-changes-section">
                 <h4>Существующие показатели</h4>
-                <div className="measures-table-wrapper">
-                  <table className="measures-changes-table">
-                    <thead>
-                      <tr>
-                        <th>Название</th>
-                        <th>Перевод</th>
-                        <th>Формула (DAX)</th>
-                        <th>Изменить?</th>
-                        <th>Новое название</th>
-                        <th>Новая формула</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {block.measureChanges.map(mc => (
-                        <tr key={mc.measureId}>
-                          <td><code>{mc.originalName}</code></td>
-                          <td>{mc.originalTranslation}</td>
-                          <td className="formula-cell" title={mc.originalExpression}>
-                            <div className="formula-preview">{mc.originalExpression}</div>
-                          </td>
-                          <td className="checkbox-cell">
-                            <label className="checkbox-label">
-                              <input
-                                type="checkbox"
-                                checked={mc.needsRename}
-                                onChange={(e) => handleMeasureChangeToggle(mc.measureId, 'needsRename', e.target.checked)}
-                              />
-                              Имя
-                            </label>
-                            <label className="checkbox-label">
-                              <input
-                                type="checkbox"
-                                checked={mc.needsFormulaChange}
-                                onChange={(e) => handleMeasureChangeToggle(mc.measureId, 'needsFormulaChange', e.target.checked)}
-                              />
-                              Формула
-                            </label>
-                          </td>
-                          <td>
-                            {mc.needsRename && (
-                              <>
-                                <input
-                                  type="text"
-                                  placeholder="Новое название"
-                                  value={mc.newName}
-                                  onChange={(e) => handleMeasureChangeUpdate(mc.measureId, 'newName', e.target.value)}
-                                  className="input-small"
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Новый перевод"
-                                  value={mc.newTranslation}
-                                  onChange={(e) => handleMeasureChangeUpdate(mc.measureId, 'newTranslation', e.target.value)}
-                                  className="input-small"
-                                />
-                              </>
-                            )}
-                          </td>
-                          <td>
-                            {mc.needsFormulaChange && (
-                              <textarea
-                                placeholder="Новая формула DAX"
-                                value={mc.newExpression}
-                                onChange={(e) => handleMeasureChangeUpdate(mc.measureId, 'newExpression', e.target.value)}
-                                rows="2"
-                                className="textarea-small"
-                              />
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <MasterTable
+                  data={block.measureChanges.map((mc) => ({
+                    ...mc,
+                    changeMode: mc.needsRename && mc.needsFormulaChange
+                      ? 'Имя и формула'
+                      : mc.needsRename
+                      ? 'Имя'
+                      : mc.needsFormulaChange
+                      ? 'Формула'
+                      : 'Без изменений'
+                  }))}
+                  getRowId={(row) => row.measureId}
+                  searchableFields={['originalName', 'originalTranslation', 'originalExpression']}
+                  filterConfigs={[
+                    {
+                      key: 'changeMode',
+                      label: 'Режим изменения',
+                      options: [
+                        { value: '__all', label: 'Все' },
+                        { value: 'Без изменений', label: 'Без изменений' },
+                        { value: 'Имя', label: 'Только имя' },
+                        { value: 'Формула', label: 'Только формула' },
+                        { value: 'Имя и формула', label: 'Имя и формула' }
+                      ]
+                    }
+                  ]}
+                  columns={[
+                    {
+                      key: 'originalName',
+                      label: 'Название',
+                      render: (value) => <code>{value}</code>
+                    },
+                    {
+                      key: 'originalTranslation',
+                      label: 'Перевод'
+                    },
+                    {
+                      key: 'changeMode',
+                      label: 'Текущий режим',
+                      sortable: false
+                    },
+                    {
+                      key: 'newName',
+                      label: 'Новое название',
+                      editable: true,
+                      placeholder: 'Новое название',
+                      render: (value, row) => (
+                        <input
+                          type="text"
+                          className="master-table-input"
+                          value={value || ''}
+                          placeholder="Новое название"
+                          onChange={(event) => {
+                            handleMeasureChangeUpdate(row.measureId, 'newName', event.target.value);
+                            if (event.target.value) {
+                              handleMeasureChangeToggle(row.measureId, 'needsRename', true);
+                            }
+                          }}
+                        />
+                      )
+                    },
+                    {
+                      key: 'newTranslation',
+                      label: 'Новый перевод',
+                      sortable: false,
+                      render: (value, row) => (
+                        <input
+                          type="text"
+                          className="master-table-input"
+                          value={value || ''}
+                          placeholder="Новый перевод"
+                          onChange={(event) => {
+                            handleMeasureChangeUpdate(row.measureId, 'newTranslation', event.target.value);
+                            if (event.target.value) {
+                              handleMeasureChangeToggle(row.measureId, 'needsRename', true);
+                            }
+                          }}
+                        />
+                      )
+                    },
+                    {
+                      key: 'newExpression',
+                      label: 'Новая формула',
+                      sortable: false,
+                      render: (value, row) => (
+                        <textarea
+                          className="master-table-textarea"
+                          rows={3}
+                          value={value || ''}
+                          placeholder="Новая формула DAX"
+                          onChange={(event) => {
+                            handleMeasureChangeUpdate(row.measureId, 'newExpression', event.target.value);
+                            if (event.target.value) {
+                              handleMeasureChangeToggle(row.measureId, 'needsFormulaChange', true);
+                            }
+                          }}
+                        />
+                      )
+                    }
+                  ]}
+                  rowActions={[
+                    { id: 'rename', label: 'Изменить только имя', onClick: (row) => handleMeasureAction('rename', row) },
+                    { id: 'formula', label: 'Изменить только формулу', onClick: (row) => handleMeasureAction('formula', row) },
+                    { id: 'both', label: 'Изменить имя и формулу', onClick: (row) => handleMeasureAction('both', row) },
+                    { id: 'reset', label: 'Сбросить изменения', variant: 'danger', onClick: (row) => handleMeasureAction('reset', row) }
+                  ]}
+                  renderExpanded={(row) => (
+                    <MeasureDaxCard
+                      originalExpression={row.originalExpression}
+                      newExpression={row.newExpression}
+                    />
+                  )}
+                />
               </div>
             )}
 
@@ -699,6 +767,62 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+const MeasureDaxCard = ({ originalExpression, newExpression }) => {
+  const [copied, setCopied] = useState('');
+
+  const copyValue = async (value, key) => {
+    try {
+      await navigator.clipboard.writeText(value || '');
+      setCopied(key);
+      setTimeout(() => setCopied(''), 1200);
+    } catch (error) {
+      console.error('Copy failed', error);
+    }
+  };
+
+  return (
+    <div className="measure-dax-card">
+      <div className="measure-dax-item">
+        <div className="measure-dax-header">
+          <strong>Текущая формула</strong>
+          <button type="button" className="copy-code-btn" onClick={() => copyValue(originalExpression, 'current')}>
+            {copied === 'current' ? <Check size={14} /> : <Copy size={14} />}
+            <span>{copied === 'current' ? 'Скопировано' : 'Копировать'}</span>
+          </button>
+        </div>
+        <pre>{originalExpression ? <DaxHighlightedCode expression={originalExpression} /> : 'Формула не задана'}</pre>
+      </div>
+      <div className="measure-dax-item">
+        <div className="measure-dax-header">
+          <strong>Новая формула</strong>
+          <button type="button" className="copy-code-btn" onClick={() => copyValue(newExpression, 'new')}>
+            {copied === 'new' ? <Check size={14} /> : <Copy size={14} />}
+            <span>{copied === 'new' ? 'Скопировано' : 'Копировать'}</span>
+          </button>
+        </div>
+        <pre>{newExpression ? <DaxHighlightedCode expression={newExpression} /> : 'Новая формула пока не заполнена'}</pre>
+      </div>
+    </div>
+  );
+};
+
+const DaxHighlightedCode = ({ expression }) => {
+  const tokenLines = tokenizeDaxExpression(expression || '');
+  return (
+    <code className="dax-highlighted-code">
+      {tokenLines.map((line, lineIndex) => (
+        <span key={`line-${lineIndex}`} className="dax-highlighted-line">
+          {line.map((token, tokenIndex) => (
+            <span key={`line-${lineIndex}-${tokenIndex}`} className={`dax-token dax-token-${token.type}`}>
+              {token.value}
+            </span>
+          ))}
+        </span>
+      ))}
+    </code>
   );
 };
 

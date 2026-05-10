@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, BarChart3, GitBranch, History, Package, Shuffle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AlertTriangle, BarChart3, Check, ChevronDown, ChevronRight, Copy, GitBranch, History, Package, Plus, Shuffle, X } from 'lucide-react';
 import { CUBE_DATA, getEntity, getRelationsForEntity } from '../mockData';
+import { MasterTable } from './MasterTable';
+import { tokenizeDaxExpression } from '../utils/daxFormatter';
 import './CatalogPage.css';
 
 const collator = new Intl.Collator(['ru-RU', 'en-US'], {
@@ -16,40 +18,138 @@ const sortByName = (items = []) =>
 
 export const CatalogPage = () => {
   const [selectedEntityId, setSelectedEntityId] = useState(CUBE_DATA.entities[0]?.id);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRelationId, setSelectedRelationId] = useState('');
+  const [compareEntityIds, setCompareEntityIds] = useState([]);
   const [activeTab, setActiveTab] = useState('catalog'); // catalog | lineage
-  const [comboboxValue, setComboboxValue] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [treeSearch, setTreeSearch] = useState('');
+  const [expandedFacts, setExpandedFacts] = useState(true);
+  const [expandedDimensions, setExpandedDimensions] = useState(true);
+  const [expandedEntityRelations, setExpandedEntityRelations] = useState({});
 
   const entity = getEntity(selectedEntityId);
   const isFactTable = entity?.id?.startsWith('F');
-  const relations = getRelationsForEntity(selectedEntityId);
 
-  // Фильтрация сущностей для комбобокса
   const filteredEntities = useMemo(() => {
-    if (!comboboxValue) return sortByName(CUBE_DATA.entities);
-    const term = comboboxValue.toLowerCase();
+    const term = treeSearch.trim().toLowerCase();
+    if (!term) return sortByName(CUBE_DATA.entities);
     return sortByName(
-      CUBE_DATA.entities.filter(ent =>
-        ent.name.toLowerCase().includes(term) ||
-        ent.id.toLowerCase().includes(term)
+      CUBE_DATA.entities.filter((ent) =>
+        ent.name.toLowerCase().includes(term) || ent.id.toLowerCase().includes(term)
       )
     );
-  }, [comboboxValue]);
+  }, [treeSearch]);
 
-  // Поиск по мерам или атрибутам
-  const filteredItems = useMemo(() => {
+  const factEntities = useMemo(
+    () => filteredEntities.filter((ent) => ent.id.startsWith('F')),
+    [filteredEntities]
+  );
+  const dimensionEntities = useMemo(
+    () => filteredEntities.filter((ent) => ent.id.startsWith('D')),
+    [filteredEntities]
+  );
+
+  const catalogRows = useMemo(() => {
     if (!entity) return [];
-    
     const items = sortByName(isFactTable ? entity.measures : entity.columns || []);
-    if (!searchTerm) return items;
-    
-    const term = searchTerm.toLowerCase();
-    return items.filter(item =>
-      item.name?.toLowerCase().includes(term) ||
-      item.translation?.toLowerCase().includes(term)
-    );
-  }, [entity, isFactTable, searchTerm]);
+    if (isFactTable) {
+      return items.map((item, index) => ({
+        ...item,
+        rowId: item.id || `${item.name}-${index}`,
+        hasExpression: item.expression ? 'Есть' : 'Нет'
+      }));
+    }
+    return items.map((item, index) => ({
+      ...item,
+      rowId: `${item.name}-${index}`,
+      hasTranslation: item.translation ? 'Есть' : 'Нет'
+    }));
+  }, [entity, isFactTable]);
+
+  const addEntityToCompare = (entityId) => {
+    if (!entityId || entityId === selectedEntityId) return;
+    setCompareEntityIds((prev) => (prev.includes(entityId) ? prev : [...prev, entityId]));
+  };
+
+  const removeEntityFromCompare = (entityId) => {
+    setCompareEntityIds((prev) => prev.filter((id) => id !== entityId));
+  };
+
+  const toggleEntityRelations = (entityId) => {
+    setExpandedEntityRelations((prev) => ({ ...prev, [entityId]: !prev[entityId] }));
+  };
+
+  const getEntityRelationTargets = (entityId) => {
+    const entityRelations = getRelationsForEntity(entityId);
+    return entityRelations.map((rel, idx) => {
+      const targetId = rel.fromTable === entityId ? rel.toTable : rel.fromTable;
+      const targetEntity = getEntity(targetId);
+      const fromColumn = rel.fromTable === entityId ? rel.fromColumn : rel.toColumn;
+      const toColumn = rel.fromTable === entityId ? rel.toColumn : rel.fromColumn;
+      return {
+        id: `${entityId}-${targetId}-${idx}`,
+        targetId,
+        targetName: targetEntity?.name || targetId,
+        relationLabel: `[${fromColumn}] -> [${toColumn}]`
+      };
+    });
+  };
+
+  const currentRelationTargets = useMemo(
+    () => getEntityRelationTargets(selectedEntityId),
+    [selectedEntityId]
+  );
+  const compareRelationsByEntity = useMemo(() => {
+    const map = new Map();
+    compareEntityIds.forEach((entityId) => {
+      if (entityId !== selectedEntityId) {
+        map.set(entityId, getEntityRelationTargets(entityId));
+      }
+    });
+    return map;
+  }, [compareEntityIds, selectedEntityId]);
+
+  const relationComparisonRows = useMemo(() => {
+    const currentMap = new Map();
+    const perCompareMaps = new Map();
+
+    currentRelationTargets.forEach((item) => {
+      if (!currentMap.has(item.targetId)) currentMap.set(item.targetId, []);
+      currentMap.get(item.targetId).push(item.relationLabel);
+    });
+
+    compareRelationsByEntity.forEach((targets, entityId) => {
+      const compareMap = new Map();
+      targets.forEach((item) => {
+        if (!compareMap.has(item.targetId)) compareMap.set(item.targetId, []);
+        compareMap.get(item.targetId).push(item.relationLabel);
+      });
+      perCompareMaps.set(entityId, compareMap);
+    });
+
+    const allTargetIds = new Set([...currentMap.keys()]);
+    perCompareMaps.forEach((compareMap) => compareMap.forEach((_, targetId) => allTargetIds.add(targetId)));
+
+    return Array.from(allTargetIds)
+      .map((targetId) => {
+        const targetEntity = getEntity(targetId);
+        const leftValues = currentMap.get(targetId) || [];
+        const compareValues = {};
+        let hasAnyMatch = false;
+        perCompareMaps.forEach((compareMap, entityId) => {
+          const values = compareMap.get(targetId) || [];
+          compareValues[entityId] = values;
+          if (leftValues.length > 0 && values.length > 0) hasAnyMatch = true;
+        });
+        return {
+          targetId,
+          targetName: targetEntity?.name || targetId,
+          leftValues,
+          compareValues,
+          isMatch: hasAnyMatch
+        };
+      })
+      .sort((a, b) => collator.compare(a.targetName, b.targetName));
+  }, [compareRelationsByEntity, currentRelationTargets]);
 
   return (
     <div className="catalog-page">
@@ -75,177 +175,212 @@ export const CatalogPage = () => {
       </div>
 
       {activeTab === 'catalog' ? (
-        <>
-          {/* Контролы */}
-          <div className="catalog-controls">
-            <div className="entity-selector">
-              <label>Выберите сущность:</label>
-              <div className="combobox-wrapper">
-                <input
-                  type="text"
-                  className="combobox-input"
-                  placeholder="Введите или выберите сущность..."
-                  value={comboboxValue || entity?.name || ''}
-                  onChange={(e) => {
-                    setComboboxValue(e.target.value);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => {
-                    setComboboxValue('');
-                    setShowDropdown(true);
-                  }}
-                  onBlur={() => {
-                    setTimeout(() => {
-                      setShowDropdown(false);
-                      setComboboxValue('');
-                    }, 200);
-                  }}
-                />
-                {showDropdown && (
-                  <div className="dropdown-list">
-                    <div className="dropdown-group">
-                      <div className="dropdown-group-label">Факты</div>
-                      {filteredEntities
-                        .filter(e => e.id.startsWith('F'))
-                        .map(ent => (
-                          <div
-                            key={ent.id}
-                            className={`dropdown-item ${ent.id === selectedEntityId ? 'selected' : ''}`}
-                            onMouseDown={() => {
-                              setSelectedEntityId(ent.id);
-                              setShowDropdown(false);
-                              setComboboxValue('');
-                            }}
-                          >
-                            {ent.name}
-                          </div>
-                        ))}
-                    </div>
-                    <div className="dropdown-group">
-                      <div className="dropdown-group-label">Измерения</div>
-                      {filteredEntities
-                        .filter(e => e.id.startsWith('D'))
-                        .map(ent => (
-                          <div
-                            key={ent.id}
-                            className={`dropdown-item ${ent.id === selectedEntityId ? 'selected' : ''}`}
-                            onMouseDown={() => {
-                              setSelectedEntityId(ent.id);
-                              setShowDropdown(false);
-                              setComboboxValue('');
-                            }}
-                          >
-                            {ent.name}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+        <div className="catalog-layout">
+          <aside className="entity-tree">
+            <div className="entity-tree-header">
               <input
                 type="text"
-                className="search-input"
-                placeholder={`Поиск по ${isFactTable ? 'показателям' : 'атрибутам'}...`}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                className="entity-tree-search"
+                placeholder="Поиск сущности..."
+                value={treeSearch}
+                onChange={(event) => setTreeSearch(event.target.value)}
               />
             </div>
-          </div>
+            <div className="entity-tree-content">
+              <TreeGroup
+                title="Факты"
+                expanded={expandedFacts}
+                onToggle={() => setExpandedFacts((prev) => !prev)}
+                entities={factEntities}
+                selectedEntityId={selectedEntityId}
+                expandedEntityRelations={expandedEntityRelations}
+                onToggleEntityRelations={toggleEntityRelations}
+                getEntityRelationTargets={getEntityRelationTargets}
+                onSelectEntity={(entityId) => {
+                  setSelectedEntityId(entityId);
+                  setSelectedRelationId('');
+                  setCompareEntityIds((prev) => prev.filter((id) => id !== entityId));
+                }}
+                selectedRelationId={selectedRelationId}
+                onSelectRelation={(target, sourceId) => {
+                  setSelectedEntityId(target.targetId);
+                  setSelectedRelationId(`${sourceId}:${target.id}`);
+                  setCompareEntityIds((prev) => prev.filter((id) => id !== target.targetId));
+                }}
+                onAddCompare={addEntityToCompare}
+                compareEntityIds={compareEntityIds}
+              />
+              <TreeGroup
+                title="Измерения"
+                expanded={expandedDimensions}
+                onToggle={() => setExpandedDimensions((prev) => !prev)}
+                entities={dimensionEntities}
+                selectedEntityId={selectedEntityId}
+                expandedEntityRelations={expandedEntityRelations}
+                onToggleEntityRelations={toggleEntityRelations}
+                getEntityRelationTargets={getEntityRelationTargets}
+                onSelectEntity={(entityId) => {
+                  setSelectedEntityId(entityId);
+                  setSelectedRelationId('');
+                  setCompareEntityIds((prev) => prev.filter((id) => id !== entityId));
+                }}
+                selectedRelationId={selectedRelationId}
+                onSelectRelation={(target, sourceId) => {
+                  setSelectedEntityId(target.targetId);
+                  setSelectedRelationId(`${sourceId}:${target.id}`);
+                  setCompareEntityIds((prev) => prev.filter((id) => id !== target.targetId));
+                }}
+                onAddCompare={addEntityToCompare}
+                compareEntityIds={compareEntityIds}
+              />
+            </div>
+          </aside>
 
-          {/* Показатели (для фактов) или Атрибуты (для измерений) */}
-          <div className="items-section">
-            <h3>{isFactTable ? `Показатели (${filteredItems.length})` : `Атрибуты (${filteredItems.length})`}</h3>
-            
-            {isFactTable ? (
-              <table className="measures-table">
+          <div className="catalog-main">
+            <div className="selected-entity-panel">
+              <span className="selected-entity-id">{entity?.id}</span>
+              <strong>{entity?.name}</strong>
+              <span className="selected-entity-meta">{isFactTable ? 'Таблица фактов' : 'Справочник'}</span>
+            </div>
+            {/* Показатели (для фактов) или Атрибуты (для измерений) */}
+            <div className="items-section">
+              <h3>{isFactTable ? `Показатели (${catalogRows.length})` : `Атрибуты (${catalogRows.length})`}</h3>
+              <MasterTable
+                data={catalogRows}
+                getRowId={(row) => row.rowId}
+                searchableFields={isFactTable ? ['name', 'translation', 'expression'] : ['name', 'translation']}
+                filterConfigs={
+                  isFactTable
+                    ? [
+                        {
+                          key: 'hasExpression',
+                          label: 'Выражение',
+                          options: [
+                            { value: '__all', label: 'Все' },
+                            { value: 'Есть', label: 'Есть выражение' },
+                            { value: 'Нет', label: 'Без выражения' }
+                          ]
+                        }
+                      ]
+                    : [
+                        {
+                          key: 'hasTranslation',
+                          label: 'Перевод',
+                          options: [
+                            { value: '__all', label: 'Все' },
+                            { value: 'Есть', label: 'Заполнен' },
+                            { value: 'Нет', label: 'Пустой' }
+                          ]
+                        }
+                      ]
+                }
+                defaultSort={{ key: 'name', direction: 'asc' }}
+                renderExpanded={isFactTable ? (row) => <DaxPreviewCard expression={row.expression} /> : undefined}
+                columns={
+                  isFactTable
+                    ? [
+                        {
+                          key: 'name',
+                          label: 'Название',
+                          render: (value) => <code>{value}</code>
+                        },
+                        {
+                          key: 'translation',
+                          label: 'Перевод'
+                        }
+                      ]
+                    : [
+                        {
+                          key: 'name',
+                          label: 'Столбец (имя в кубе)',
+                          render: (value) => <code>{value}</code>
+                        },
+                        {
+                          key: 'translation',
+                          label: 'Перевод'
+                        }
+                      ]
+                }
+              />
+            </div>
+
+            {/* Связи */}
+            <div className="relations-section">
+              <div className="relations-compare-header">
+                <h3>Сравнение связей ({currentRelationTargets.length})</h3>
+                <div className="compare-entity-chips">
+                  {compareEntityIds.length === 0 ? (
+                    <span className="compare-empty-hint">Добавьте таблицы в сравнение через + в дереве</span>
+                  ) : (
+                    compareEntityIds.map((entityId) => {
+                      const compareEntity = getEntity(entityId);
+                      return (
+                        <span key={entityId} className="compare-chip">
+                          <span>{entityId}</span>
+                          <button
+                            type="button"
+                            className="compare-chip-remove"
+                            onClick={() => removeEntityFromCompare(entityId)}
+                            aria-label="Убрать из сравнения"
+                          >
+                            <X size={12} />
+                          </button>
+                          <span>{compareEntity?.name}</span>
+                        </span>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+              <table className="relations-compare-table">
                 <thead>
                   <tr>
-                    <th>Название</th>
-                    <th>Перевод</th>
-                    <th>Выражение (DAX)</th>
+                    <th>Общая сущность</th>
+                    <th>{selectedEntityId} (текущая)</th>
+                    {compareEntityIds.map((entityId) => (
+                      <th key={`head-${entityId}`}>{entityId} (сравнение)</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.length === 0 ? (
-                    <tr><td colSpan="3" className="no-data">Показатели не найдены</td></tr>
+                  {relationComparisonRows.length === 0 ? (
+                    <tr>
+                      <td className="relations-compare-empty" colSpan={2 + compareEntityIds.length}>Связи не найдены</td>
+                    </tr>
                   ) : (
-                    filteredItems.map(measure => (
-                      <tr key={measure.id || measure.name}>
-                        <td className="item-name"><code>{measure.name}</code></td>
-                        <td className="item-translation">{measure.translation}</td>
-                        <td className="item-expr">
-                          <div className="expression-cell" title={measure.expression}>
-                            {measure.expression}
-                          </div>
+                    relationComparisonRows.map((row) => (
+                      <tr key={row.targetId} className={row.isMatch ? 'is-match' : ''}>
+                        <td>
+                          <code>{row.targetId}</code>
+                          <div>{row.targetName}</div>
                         </td>
+                        <td>
+                          {row.leftValues.length === 0
+                            ? '-'
+                            : row.leftValues.map((value, idx) => (
+                                <div key={`left-${row.targetId}-${idx}`} className="relation-signature">{value}</div>
+                              ))}
+                        </td>
+                        {compareEntityIds.map((entityId) => {
+                          const values = row.compareValues[entityId] || [];
+                          return (
+                            <td key={`${row.targetId}-${entityId}`}>
+                              {values.length === 0
+                                ? '-'
+                                : values.map((value, idx) => (
+                                    <div key={`right-${row.targetId}-${entityId}-${idx}`} className="relation-signature">{value}</div>
+                                  ))}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
-            ) : (
-              <table className="attributes-table">
-                <thead>
-                  <tr>
-                    <th>Столбец (имя в кубе)</th>
-                    <th>Перевод</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredItems.length === 0 ? (
-                    <tr><td colSpan="2" className="no-data">Атрибуты не найдены</td></tr>
-                  ) : (
-                    filteredItems.map((attr, idx) => (
-                      <tr key={idx}>
-                        <td className="item-name"><code>{attr.name}</code></td>
-                        <td className="item-translation">{attr.translation}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            )}
+            </div>
           </div>
-
-          {/* Связи */}
-          <div className="relations-section">
-            <h3>Связи с другими таблицами ({relations.length})</h3>
-            {relations.length === 0 ? (
-              <p className="no-data">Связи не найдены</p>
-            ) : (
-              <table className="relations-table">
-                <thead>
-                  <tr>
-                    <th>Направление</th>
-                    <th>Из таблицы</th>
-                    <th>В таблицу</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {relations.map((rel, idx) => {
-                    const fromEntity = getEntity(rel.fromTable);
-                    const toEntity = getEntity(rel.toTable);
-                    const isOutgoing = rel.fromTable === selectedEntityId;
-                    
-                    return (
-                      <tr key={idx}>
-                        <td className="direction-cell">
-                          {isOutgoing ? <ArrowRight size={16} /> : <ArrowLeft size={16} />}
-                        </td>
-                        <td>
-                          <code>{fromEntity?.tableName || rel.fromTable}([{rel.fromColumn}])</code>
-                        </td>
-                        <td>
-                          <code>{toEntity?.tableName || rel.toTable}([{rel.toColumn}])</code>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </>
+        </div>
       ) : (
         <div className="lineage-section">
           <div className="placeholder-box">
@@ -269,6 +404,134 @@ export const CatalogPage = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const TreeGroup = ({
+  title,
+  expanded,
+  onToggle,
+  entities,
+  selectedEntityId,
+  expandedEntityRelations,
+  onToggleEntityRelations,
+  getEntityRelationTargets,
+  onSelectEntity,
+  selectedRelationId,
+  onSelectRelation,
+  onAddCompare,
+  compareEntityIds
+}) => {
+  return (
+    <div className="tree-group">
+      <button type="button" className="tree-group-button" onClick={onToggle}>
+        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <span>{title}</span>
+      </button>
+      {expanded && (
+        <div className="tree-entities">
+          {entities.map((ent) => {
+            const relationTargets = getEntityRelationTargets(ent.id);
+            const isOpen = Boolean(expandedEntityRelations[ent.id]);
+            return (
+              <div key={ent.id} className="tree-entity-block">
+                <div className="tree-entity-row">
+                  <button
+                    type="button"
+                    className="tree-node-toggle"
+                    onClick={() => onToggleEntityRelations(ent.id)}
+                    aria-label="Раскрыть связи сущности"
+                  >
+                    {relationTargets.length === 0 ? null : isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                  </button>
+                  <button
+                    type="button"
+                    className={`tree-entity-button ${selectedEntityId === ent.id ? 'active' : ''}`}
+                    onClick={() => onSelectEntity(ent.id)}
+                  >
+                    <span className="tree-entity-id">{ent.id}</span>
+                    <span>{ent.name}</span>
+                  </button>
+                  {selectedEntityId !== ent.id && (
+                    <button
+                      type="button"
+                      className={`tree-add-compare-btn ${compareEntityIds.includes(ent.id) ? 'is-added' : ''}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onAddCompare(ent.id);
+                      }}
+                      title="Добавить в сравнение"
+                      aria-label="Добавить в сравнение"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  )}
+                </div>
+                {isOpen && relationTargets.length > 0 && (
+                  <div className="tree-relation-list">
+                    {relationTargets.map((target) => (
+                      <button
+                        key={target.id}
+                        type="button"
+                        className={`tree-relation-button ${selectedRelationId === `${ent.id}:${target.id}` ? 'active' : ''}`}
+                        onClick={() => onSelectRelation(target, ent.id)}
+                      >
+                        <span>{target.targetName}</span>
+                        <span className="tree-relation-label">{target.relationLabel}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DaxHighlightedCode = ({ expression }) => {
+  const tokenLines = tokenizeDaxExpression(expression || '');
+  return (
+    <code className="dax-highlighted-code">
+      {tokenLines.map((line, lineIndex) => (
+        <span key={`line-${lineIndex}`} className="dax-highlighted-line">
+          {line.map((token, tokenIndex) => (
+            <span key={`line-${lineIndex}-token-${tokenIndex}`} className={`dax-token dax-token-${token.type}`}>
+              {token.value}
+            </span>
+          ))}
+        </span>
+      ))}
+    </code>
+  );
+};
+
+const DaxPreviewCard = ({ expression }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(expression || '');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch (error) {
+      console.error('Copy failed', error);
+    }
+  };
+
+  return (
+    <div className="dax-preview-card">
+      <div className="dax-preview-header">
+        <strong>Выражение DAX</strong>
+        <button type="button" className="copy-code-btn" onClick={handleCopy}>
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          <span>{copied ? 'Скопировано' : 'Копировать'}</span>
+        </button>
+      </div>
+      <pre>{expression ? <DaxHighlightedCode expression={expression} /> : 'Нет выражения'}</pre>
     </div>
   );
 };
