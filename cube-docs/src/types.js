@@ -102,7 +102,6 @@ export class MeasureChange {
     originalTranslation,
     originalExpression,
     needsRename = false,
-    newName = '',
     newTranslation = '',
     needsFormulaChange = false,
     newExpression = ''
@@ -112,7 +111,6 @@ export class MeasureChange {
     this.originalTranslation = originalTranslation;
     this.originalExpression = originalExpression;
     this.needsRename = needsRename;
-    this.newName = newName;
     this.newTranslation = newTranslation;
     this.needsFormulaChange = needsFormulaChange;
     this.newExpression = newExpression;
@@ -143,7 +141,6 @@ export class WorkBlock {
     entityType = 'fact', // 'fact' | 'dimension'
     entityId = '',
     entityName = '',
-    tableName = '',
     measureChanges = [],
     newMeasures = [],
     newAttributes = [],
@@ -154,7 +151,6 @@ export class WorkBlock {
     this.entityType = entityType;
     this.entityId = entityId;
     this.entityName = entityName;
-    this.tableName = tableName;
     this.measureChanges = measureChanges;
     this.newMeasures = newMeasures;
     this.newAttributes = newAttributes;

@@ -521,7 +521,7 @@ export const exportToDocxV2 = async (requirement) => {
         const changesTable = createTable(
           [
             createHeaderCell('Исходное название'),
-            createHeaderCell('Новое название'),
+            createHeaderCell('Новый перевод'),
             createHeaderCell('Исходная формула'),
             createHeaderCell('Новая формула'),
             createHeaderCell('Примечание об изменениях'),
@@ -531,7 +531,7 @@ export const exportToDocxV2 = async (requirement) => {
               new TableRow({
                 children: [
                   createDataCell(change.originalName || ''),
-                  createDataCell(change.needsRename ? change.newName : '-'),
+                  createDataCell(change.needsRename ? change.newTranslation : '-'),
                   createDataCell(change.originalExpression || '-'),
                   createDataCell(change.needsFormulaChange ? change.newExpression : '-'),
                   createDataCell(
@@ -560,7 +560,7 @@ export const exportToDocxV2 = async (requirement) => {
         const attrChangesTable = createTable(
           [
             createHeaderCell('Исходное название'),
-            createHeaderCell('Новое название'),
+            createHeaderCell('Новый перевод'),
             createHeaderCell('Исходный перевод'),
             createHeaderCell('Новый перевод'),
           ],
@@ -569,7 +569,7 @@ export const exportToDocxV2 = async (requirement) => {
               new TableRow({
                 children: [
                   createDataCell(change.originalName || ''),
-                  createDataCell(change.newName || '-'),
+                  createDataCell(change.newTranslation || '-'),
                   createDataCell(change.originalTranslation || ''),
                   createDataCell(change.newTranslation || '-'),
                 ],

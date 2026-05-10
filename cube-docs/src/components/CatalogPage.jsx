@@ -151,6 +151,17 @@ export const CatalogPage = () => {
       .sort((a, b) => collator.compare(a.targetName, b.targetName));
   }, [compareRelationsByEntity, currentRelationTargets]);
 
+  const formatEntityTitle = (entityId) => {
+    const entityItem = getEntity(entityId);
+    return entityItem ? `${entityId} ${entityItem.name}` : entityId;
+  };
+
+  const formatComparisonHeader = (entityId, suffix) => {
+    const entityItem = getEntity(entityId);
+    const tableName = entityItem?.tableName || entityId;
+    return `${tableName} (${suffix})`;
+  };
+
   return (
     <div className="catalog-page">
       <h1>Каталог куба</h1>
@@ -208,6 +219,7 @@ export const CatalogPage = () => {
                   setCompareEntityIds((prev) => prev.filter((id) => id !== target.targetId));
                 }}
                 onAddCompare={addEntityToCompare}
+                onRemoveCompare={removeEntityFromCompare}
                 compareEntityIds={compareEntityIds}
               />
               <TreeGroup
@@ -231,6 +243,7 @@ export const CatalogPage = () => {
                   setCompareEntityIds((prev) => prev.filter((id) => id !== target.targetId));
                 }}
                 onAddCompare={addEntityToCompare}
+                onRemoveCompare={removeEntityFromCompare}
                 compareEntityIds={compareEntityIds}
               />
             </div>
@@ -249,31 +262,7 @@ export const CatalogPage = () => {
                 data={catalogRows}
                 getRowId={(row) => row.rowId}
                 searchableFields={isFactTable ? ['name', 'translation', 'expression'] : ['name', 'translation']}
-                filterConfigs={
-                  isFactTable
-                    ? [
-                        {
-                          key: 'hasExpression',
-                          label: 'Выражение',
-                          options: [
-                            { value: '__all', label: 'Все' },
-                            { value: 'Есть', label: 'Есть выражение' },
-                            { value: 'Нет', label: 'Без выражения' }
-                          ]
-                        }
-                      ]
-                    : [
-                        {
-                          key: 'hasTranslation',
-                          label: 'Перевод',
-                          options: [
-                            { value: '__all', label: 'Все' },
-                            { value: 'Есть', label: 'Заполнен' },
-                            { value: 'Нет', label: 'Пустой' }
-                          ]
-                        }
-                      ]
-                }
+                filterConfigs={[]}
                 defaultSort={{ key: 'name', direction: 'asc' }}
                 renderExpanded={isFactTable ? (row) => <DaxPreviewCard expression={row.expression} /> : undefined}
                 columns={
@@ -313,19 +302,12 @@ export const CatalogPage = () => {
                     <span className="compare-empty-hint">Добавьте таблицы в сравнение через + в дереве</span>
                   ) : (
                     compareEntityIds.map((entityId) => {
-                      const compareEntity = getEntity(entityId);
                       return (
                         <span key={entityId} className="compare-chip">
-                          <span>{entityId}</span>
-                          <button
-                            type="button"
-                            className="compare-chip-remove"
-                            onClick={() => removeEntityFromCompare(entityId)}
-                            aria-label="Убрать из сравнения"
-                          >
+                          <span>{formatEntityTitle(entityId)}</span>
+                          <button type="button" className="compare-chip-remove" onClick={() => removeEntityFromCompare(entityId)} aria-label="Убрать из сравнения">
                             <X size={12} />
                           </button>
-                          <span>{compareEntity?.name}</span>
                         </span>
                       );
                     })
@@ -336,9 +318,9 @@ export const CatalogPage = () => {
                 <thead>
                   <tr>
                     <th>Общая сущность</th>
-                    <th>{selectedEntityId} (текущая)</th>
+                    <th>{formatComparisonHeader(selectedEntityId, 'текущая')}</th>
                     {compareEntityIds.map((entityId) => (
-                      <th key={`head-${entityId}`}>{entityId} (сравнение)</th>
+                      <th key={`head-${entityId}`}>{formatComparisonHeader(entityId, 'сравнение')}</th>
                     ))}
                   </tr>
                 </thead>
@@ -421,6 +403,7 @@ const TreeGroup = ({
   selectedRelationId,
   onSelectRelation,
   onAddCompare,
+  onRemoveCompare,
   compareEntityIds
 }) => {
   return (
@@ -434,6 +417,7 @@ const TreeGroup = ({
           {entities.map((ent) => {
             const relationTargets = getEntityRelationTargets(ent.id);
             const isOpen = Boolean(expandedEntityRelations[ent.id]);
+            const isCompareAdded = compareEntityIds.includes(ent.id);
             return (
               <div key={ent.id} className="tree-entity-block">
                 <div className="tree-entity-row">
@@ -445,28 +429,35 @@ const TreeGroup = ({
                   >
                     {relationTargets.length === 0 ? null : isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                   </button>
-                  <button
-                    type="button"
-                    className={`tree-entity-button ${selectedEntityId === ent.id ? 'active' : ''}`}
-                    onClick={() => onSelectEntity(ent.id)}
-                  >
-                    <span className="tree-entity-id">{ent.id}</span>
-                    <span>{ent.name}</span>
-                  </button>
-                  {selectedEntityId !== ent.id && (
+                  <div className={`tree-entity-main ${selectedEntityId !== ent.id ? 'has-compare-action' : ''} ${isCompareAdded ? 'is-added' : ''}`}>
                     <button
                       type="button"
-                      className={`tree-add-compare-btn ${compareEntityIds.includes(ent.id) ? 'is-added' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onAddCompare(ent.id);
-                      }}
-                      title="Добавить в сравнение"
-                      aria-label="Добавить в сравнение"
+                      className={`tree-entity-button ${selectedEntityId === ent.id ? 'active' : ''}`}
+                      onClick={() => onSelectEntity(ent.id)}
                     >
-                      <Plus size={12} />
+                      <span className="tree-entity-id">{ent.id}</span>
+                      <span className="tree-entity-name">{ent.name}</span>
                     </button>
-                  )}
+                    {selectedEntityId !== ent.id && (
+                      <button
+                        type="button"
+                        className={`tree-add-compare-btn ${isCompareAdded ? 'is-added' : ''}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (isCompareAdded) {
+                            onRemoveCompare(ent.id);
+                          } else {
+                            onAddCompare(ent.id);
+                          }
+                        }}
+                        title={isCompareAdded ? 'Убрать из сравнения' : 'Добавить в сравнение'}
+                        aria-label={isCompareAdded ? 'Убрать из сравнения' : 'Добавить в сравнение'}
+                      >
+                        <span className="icon-plus"><Plus size={12} /></span>
+                        <span className="icon-remove"><X size={12} /></span>
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {isOpen && relationTargets.length > 0 && (
                   <div className="tree-relation-list">
