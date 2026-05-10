@@ -1,0 +1,432 @@
+.catalog-page {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 24px;
+  background: var(--bg-page);
+  min-height: 100vh;
+}
+
+.catalog-page h1 {
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-size: 2rem;
+}
+
+.description {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  font-size: 1rem;
+}
+
+/* Табы */
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-muted);
+}
+
+.tab:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--text-primary);
+}
+
+.tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Контролы */
+.catalog-controls {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.entity-selector {
+  flex: 1;
+  min-width: 300px;
+}
+
+.entity-selector label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.entity-selector .combobox-wrapper {
+  position: relative;
+}
+
+.entity-selector .combobox-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-size: 1em;
+  background: var(--bg-card);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border-bottom: none;
+  cursor: text;
+}
+
+.entity-selector .combobox-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--color-primary);
+  border-top: none;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
+}
+
+.dropdown-group {
+  margin: 8px 0;
+}
+
+.dropdown-group-label {
+  padding: 8px 12px;
+  background: var(--bg-subtle);
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dropdown-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.95em;
+}
+
+.dropdown-item:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.dropdown-item.selected {
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.entity-selector .search-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  font-size: 1em;
+  background: var(--bg-card);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border-top: none;
+}
+
+.entity-selector .search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* Секции */
+.entity-info,
+.items-section,
+.relations-section {
+  background: var(--bg-card);
+  padding: 25px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 25px;
+}
+
+.entity-info h2,
+.items-section h3,
+.relations-section h3 {
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+/* Таблица информации */
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.info-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.info-table td:first-child {
+  width: 20%;
+  background: var(--bg-subtle);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.info-table code {
+  background: var(--bg-subtle);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+/* Таблицы показателей и атрибутов */
+.measures-table,
+.attributes-table,
+.relations-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.measures-table thead,
+.attributes-table thead,
+.relations-table thead {
+  background: var(--color-dark);
+  color: #ffffff;
+}
+
+.measures-table th,
+.attributes-table th,
+.relations-table th {
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85em;
+  letter-spacing: 0.5px;
+}
+
+.measures-table tbody tr,
+.attributes-table tbody tr,
+.relations-table tbody tr {
+  border-bottom: 1px solid var(--border-default);
+  transition: background 0.2s ease;
+}
+
+.measures-table tbody tr:hover,
+.attributes-table tbody tr:hover,
+.relations-table tbody tr:hover {
+  background: var(--bg-subtle);
+}
+
+.measures-table td,
+.attributes-table td,
+.relations-table td {
+  padding: 12px 15px;
+  vertical-align: top;
+}
+
+.item-name code {
+  color: var(--color-primary);
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95em;
+}
+
+.item-translation {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.item-desc {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.item-expr {
+  max-width: 400px;
+}
+
+.expression-cell {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  padding: 8px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid var(--border-default);
+}
+
+/* Таблица связей */
+.relations-table td {
+  padding: 12px 15px;
+}
+
+.relations-table .direction-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--color-primary);
+  width: 80px;
+}
+
+.relations-table code {
+  background: var(--bg-subtle);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: 'Courier New', monospace;
+  display: inline-block;
+  color: var(--text-primary);
+}
+
+.no-data {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 30px !important;
+  font-style: italic;
+  background: var(--bg-subtle);
+}
+
+/* Data Lineage секция */
+.lineage-section {
+  background: var(--bg-card);
+  padding: 40px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.placeholder-box {
+  text-align: center;
+  padding: 60px 40px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-default);
+}
+
+.placeholder-box h2 {
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.placeholder-text {
+  color: var(--text-secondary);
+  font-size: 1.1em;
+  margin-bottom: 30px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 30px 0;
+  display: inline-block;
+  text-align: left;
+}
+
+.feature-list li {
+  padding: 10px 20px;
+  margin-bottom: 10px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  font-size: 1em;
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.placeholder-note {
+  color: var(--color-warning);
+  font-weight: 600;
+  font-size: 1rem;
+  margin-top: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .catalog-page {
+    padding: 15px;
+  }
+
+  .catalog-page h1 {
+    font-size: 1.8em;
+  }
+
+  .catalog-controls {
+    flex-direction: column;
+  }
+
+  .tabs {
+    flex-direction: column;
+  }
+
+  .tab {
+    width: 100%;
+    text-align: left;
+  }
+
+  .measures-table,
+  .attributes-table,
+  .relations-table {
+    font-size: 0.9em;
+  }
+
+  .measures-table th,
+  .attributes-table th,
+  .relations-table th,
+  .measures-table td,
+  .attributes-table td,
+  .relations-table td {
+    padding: 8px;
+  }
+
+  .expression-cell {
+    font-size: 0.75em;
+  }
+
+  .placeholder-box {
+    padding: 30px 20px;
+  }
+}
