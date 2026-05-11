@@ -1,5 +1,4 @@
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, HeadingLevel, BorderStyle, AlignmentType, WidthType, UnderlineType } from 'docx';
-import { getEntity, getDimensionEntity } from './mockData';
 
 export const exportToMarkdown = (requirement) => {
   const lines = [];

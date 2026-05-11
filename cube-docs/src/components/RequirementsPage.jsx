@@ -11,6 +11,7 @@ import './RequirementsPage.css';
 const collator = new Intl.Collator(['ru-RU', 'en-US'], { sensitivity: 'base', numeric: true });
 const sortByName = (items = []) =>
   [...items].sort((a, b) => collator.compare(a?.name || '', b?.name || '') || collator.compare(a?.id || '', b?.id || ''));
+const DRAFT_KEY = 'cube_docs_requirement_draft_v2';
 
 export const RequirementsPage = () => {
   const [title, setTitle] = useState('');
@@ -18,14 +19,56 @@ export const RequirementsPage = () => {
   const [workBlocks, setWorkBlocks] = useState([]);
   const [activeBlockId, setActiveBlockId] = useState('');
   const [expandedBlocks, setExpandedBlocks] = useState({});
+  const [isReqInfoExpanded, setReqInfoExpanded] = useState(true);
+  const [draftLoaded, setDraftLoaded] = useState(false);
 
   const activeBlock = workBlocks.find((block) => block.id === activeBlockId) || null;
+
+  useEffect(() => {
+    try {
+      const rawDraft = localStorage.getItem(DRAFT_KEY);
+      if (rawDraft) {
+        const draft = JSON.parse(rawDraft);
+        setTitle(draft.title || '');
+        setDescription(draft.description || '');
+        setWorkBlocks(Array.isArray(draft.workBlocks) ? draft.workBlocks : []);
+        setActiveBlockId(draft.activeBlockId || '');
+        setExpandedBlocks(draft.expandedBlocks || {});
+        setReqInfoExpanded(draft.isReqInfoExpanded ?? true);
+      }
+    } catch (error) {
+      console.error('Draft load failed', error);
+    } finally {
+      setDraftLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftLoaded || workBlocks.length > 0) return;
+    const initialBlock = new WorkBlock();
+    setWorkBlocks([initialBlock]);
+    setActiveBlockId(initialBlock.id);
+    setExpandedBlocks({ [initialBlock.id]: false });
+  }, [draftLoaded, workBlocks.length]);
+
+  useEffect(() => {
+    if (!draftLoaded) return;
+    const draft = {
+      title,
+      description,
+      workBlocks,
+      activeBlockId,
+      expandedBlocks,
+      isReqInfoExpanded
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [activeBlockId, description, draftLoaded, expandedBlocks, isReqInfoExpanded, title, workBlocks]);
 
   const handleAddWorkBlock = () => {
     const newBlock = new WorkBlock();
     setWorkBlocks((prev) => [...prev, newBlock]);
     setActiveBlockId(newBlock.id);
-    setExpandedBlocks((prev) => ({ ...prev, [newBlock.id]: true }));
+    setExpandedBlocks((prev) => ({ ...prev, [newBlock.id]: false }));
   };
 
   const handleRemoveWorkBlock = (blockId) => {
@@ -82,29 +125,6 @@ export const RequirementsPage = () => {
       <p className="description">Создавайте требования для расширения куба данных</p>
 
       <div className="requirements-container-v2">
-        <section className="form-section">
-          <h2>Общая информация</h2>
-          <div className="form-group">
-            <label>Название требования *</label>
-            <input
-              type="text"
-              placeholder="Например: Добавление новых мер для анализа скидок"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className="input-large"
-            />
-          </div>
-          <div className="form-group">
-            <label>Описание</label>
-            <textarea
-              placeholder="Подробное описание требования..."
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows="4"
-            />
-          </div>
-        </section>
-
         <section className="work-blocks-section">
           <div className="section-header">
             <h2>Блоки работ</h2>
@@ -165,6 +185,35 @@ export const RequirementsPage = () => {
               </aside>
 
               <div className="work-blocks-editor-pane">
+                <div className="requirement-info-card">
+                  <button type="button" className="requirement-info-toggle" onClick={() => setReqInfoExpanded((prev) => !prev)}>
+                    {isReqInfoExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    <span>Наименование требования</span>
+                  </button>
+                  {isReqInfoExpanded && (
+                    <div className="requirement-info-body">
+                      <div className="form-group">
+                        <label>Название требования *</label>
+                        <input
+                          type="text"
+                          placeholder="Например: Добавление новых мер для анализа скидок"
+                          value={title}
+                          onChange={(event) => setTitle(event.target.value)}
+                          className="input-large"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Описание</label>
+                        <textarea
+                          placeholder="Подробное описание требования..."
+                          value={description}
+                          onChange={(event) => setDescription(event.target.value)}
+                          rows="4"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {activeBlock ? (
                   <WorkBlockEditor
                     block={activeBlock}
@@ -220,6 +269,7 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
   const [treeSearch, setTreeSearch] = useState('');
   const [expandedFacts, setExpandedFacts] = useState(true);
   const [expandedDimensions, setExpandedDimensions] = useState(true);
+  const [measureSearch, setMeasureSearch] = useState('');
 
   const selectedEntity = block.entityId ? getEntity(block.entityId) : null;
   const isFactTable = selectedEntity?.id?.startsWith('F');
@@ -258,14 +308,42 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
   }, [block.entityId, blockIsFact]);
 
   const selectedRelatedEntities = useMemo(
-    () => sortByName(block.relatedEntities.map((id) => getEntity(id)).filter(Boolean)),
-    [block.relatedEntities]
+    () => {
+      const existingIds = block.existingRelatedEntities || [];
+      const entities = block.relatedEntities.map((id) => getEntity(id)).filter(Boolean);
+      const existing = entities.filter((entityItem) => existingIds.includes(entityItem.id));
+      const created = entities.filter((entityItem) => !existingIds.includes(entityItem.id));
+      return [...created, ...existing];
+    },
+    [block.existingRelatedEntities, block.relatedEntities]
   );
 
   const availableRelationsOnly = useMemo(
     () => availableRelatedEntities.filter((entity) => !block.relatedEntities.includes(entity.id)),
     [availableRelatedEntities, block.relatedEntities]
   );
+
+  const sourceMeasures = useMemo(() => {
+    if (block.type !== 'existing' || !isFactTable) return [];
+    const fromEntity = selectedEntity?.measures || [];
+    const fromGroup = getMeasuresForGroup(block.entityId) || [];
+    const merged = fromEntity.length > 0 ? fromEntity : fromGroup;
+    return sortByName(merged);
+  }, [block.entityId, block.type, isFactTable, selectedEntity]);
+
+  const filteredMeasureCandidates = useMemo(() => {
+    const usedIds = new Set(block.measureChanges.map((item) => item.measureId));
+    const term = measureSearch.trim().toLowerCase();
+    return sourceMeasures.filter((measure) => {
+      const measureId = measure.id || measure.name;
+      if (usedIds.has(measureId)) return false;
+      if (!term) return true;
+      return (
+        String(measure.name || '').toLowerCase().includes(term) ||
+        String(measure.translation || '').toLowerCase().includes(term)
+      );
+    });
+  }, [block.measureChanges, measureSearch, sourceMeasures]);
 
   useEffect(() => {
     if (block.type !== 'existing' || !block.entityId || block.relatedEntities.length > 0) return;
@@ -277,31 +355,15 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
         if (blockIsFact === false) return id.startsWith('F');
         return true;
       });
-    if (defaultRelated.length > 0) onUpdate({ relatedEntities: defaultRelated });
+    if (defaultRelated.length > 0) {
+      onUpdate({ relatedEntities: defaultRelated, existingRelatedEntities: defaultRelated });
+    }
   }, [block.type, block.entityId, block.relatedEntities.length, blockIsFact, onUpdate]);
 
   const handleSelectEntity = (entityId) => {
     const entity = getEntity(entityId);
     const entityType = entityId.startsWith('F') ? 'fact' : 'dimension';
-    const sourceMeasures = getMeasuresForGroup(entityId);
-    const fallbackMeasures = entity?.measures || [];
-    const measures = sourceMeasures.length > 0 ? sourceMeasures : fallbackMeasures;
-    const measureChanges =
-      entityType === 'fact'
-        ? measures.map(
-            (measure) =>
-              new MeasureChange(
-                measure.id || measure.name,
-                measure.name,
-                measure.translation || '',
-                measure.expression || '',
-                false,
-                '',
-                false,
-                ''
-              )
-          )
-        : [];
+    const measureChanges = [];
 
     const relatedDefaults = getRelationsForEntity(entityId)
       .map((rel) => (rel.fromTable === entityId ? rel.toTable : rel.fromTable))
@@ -313,8 +375,24 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
       entityName: entity?.name || '',
       entityType,
       measureChanges,
-      relatedEntities: relatedDefaults
+      relatedEntities: relatedDefaults,
+      existingRelatedEntities: relatedDefaults
     });
+    setMeasureSearch('');
+  };
+
+  const addMeasureToChanges = (measure) => {
+    const newChange = new MeasureChange(
+      measure.id || measure.name,
+      measure.name,
+      measure.translation || '',
+      measure.expression || '',
+      false,
+      '',
+      false,
+      ''
+    );
+    onUpdate({ measureChanges: [...block.measureChanges, newChange] });
   };
 
   const updateMeasureChange = (measureId, updates) => {
@@ -479,9 +557,31 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
           </div>
         )}
 
-        {(block.entityType === 'fact' || isFactTable) && (
+        {block.type === 'existing' && isFactTable && (
           <div className="measures-changes-section">
             <h4>Изменяемые показатели</h4>
+            <div className="measure-search-panel">
+              <input
+                type="text"
+                className="measure-search-input"
+                placeholder="Найти показатель для изменения..."
+                value={measureSearch}
+                onChange={(event) => setMeasureSearch(event.target.value)}
+              />
+              <div className="measure-search-results">
+                {filteredMeasureCandidates.slice(0, 8).map((measure) => (
+                  <button
+                    key={`candidate-${measure.id || measure.name}`}
+                    type="button"
+                    className="measure-candidate-btn"
+                    onClick={() => addMeasureToChanges(measure)}
+                  >
+                    <span>{measure.translation || measure.name}</span>
+                    <small>{measure.name}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
             <MasterTable
               data={block.measureChanges.map((item) => ({
                 ...item,
@@ -540,6 +640,7 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
                 { id: 'translation', label: 'Изменить перевод', onClick: (row) => handleMeasureAction('translation', row) },
                 { id: 'formula', label: 'Изменить формулу', onClick: (row) => handleMeasureAction('formula', row) },
                 { id: 'both', label: 'Изменить перевод и формулу', onClick: (row) => handleMeasureAction('both', row) },
+                { id: 'remove', label: 'Убрать из таблицы изменений', variant: 'danger', onClick: (row) => onUpdate({ measureChanges: block.measureChanges.filter((item) => item.measureId !== row.measureId) }) },
                 { id: 'reset', label: 'Сбросить', variant: 'danger', onClick: (row) => handleMeasureAction('reset', row) }
               ]}
               renderExpanded={(row) => (
@@ -632,9 +733,6 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
         <div className="relations-section relations-dual-list">
           <h4>Связи с другими сущностями</h4>
           <div className="relations-transfer-controls">
-            <button type="button" className="btn-secondary" onClick={() => onUpdate({ relatedEntities: availableRelatedEntities.map((item) => item.id) })}>
-              Добавить все
-            </button>
             <button type="button" className="btn-secondary" onClick={() => onUpdate({ relatedEntities: [] })}>
               Убрать все
             </button>
@@ -669,7 +767,7 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
                     <button
                       key={entityItem.id}
                       type="button"
-                      className="transfer-item selected"
+                      className={`transfer-item selected ${(block.existingRelatedEntities || []).includes(entityItem.id) ? 'existing' : 'new'}`}
                       onClick={() =>
                         onUpdate({ relatedEntities: block.relatedEntities.filter((id) => id !== entityItem.id) })
                       }
