@@ -11,6 +11,7 @@ export const MasterTable = ({
   columns = [],
   data = [],
   getRowId,
+  showSearch = true,
   searchableFields = [],
   filterConfigs = [],
   defaultSort,
@@ -91,44 +92,48 @@ export const MasterTable = ({
 
   return (
     <div className="master-table">
-      <div className="master-table-toolbar">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          className="master-table-search"
-          placeholder="Поиск по таблице..."
-        />
-        {filterConfigs.map((config) => {
-          const options = config.options || [
-            { value: '__all', label: 'Все' },
-            ...Array.from(new Set(data.map((row) => String(getByPath(row, config.key) ?? ''))))
-              .filter(Boolean)
-              .map((value) => ({ value, label: value }))
-          ];
+      {(showSearch || filterConfigs.length > 0) && (
+        <div className="master-table-toolbar">
+          {showSearch && (
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="master-table-search"
+              placeholder="Поиск по таблице..."
+            />
+          )}
+          {filterConfigs.map((config) => {
+            const options = config.options || [
+              { value: '__all', label: 'Все' },
+              ...Array.from(new Set(data.map((row) => String(getByPath(row, config.key) ?? ''))))
+                .filter(Boolean)
+                .map((value) => ({ value, label: value }))
+            ];
 
-          const hasAllOption = options.some((option) => option.value === '__all');
-          const normalizedOptions = hasAllOption ? options : [{ value: '__all', label: 'Все' }, ...options];
+            const hasAllOption = options.some((option) => option.value === '__all');
+            const normalizedOptions = hasAllOption ? options : [{ value: '__all', label: 'Все' }, ...options];
 
-          return (
-            <label key={config.key} className="master-table-filter">
-              <span>{config.label}</span>
-              <select
-                value={filterState[config.key] || '__all'}
-                onChange={(event) =>
-                  setFilterState((prev) => ({ ...prev, [config.key]: event.target.value }))
-                }
-              >
-                {normalizedOptions.map((option) => (
-                  <option key={`${config.key}-${option.value}`} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          );
-        })}
-      </div>
+            return (
+              <label key={config.key} className="master-table-filter">
+                <span>{config.label}</span>
+                <select
+                  value={filterState[config.key] || '__all'}
+                  onChange={(event) =>
+                    setFilterState((prev) => ({ ...prev, [config.key]: event.target.value }))
+                  }
+                >
+                  {normalizedOptions.map((option) => (
+                    <option key={`${config.key}-${option.value}`} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            );
+          })}
+        </div>
+      )}
 
       <table className="master-table-grid">
         <thead>

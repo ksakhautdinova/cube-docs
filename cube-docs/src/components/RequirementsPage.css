@@ -773,6 +773,10 @@
   margin-top: 15px;
 }
 
+.measures-changes-section .section-header h4 {
+  margin-bottom: 0;
+}
+
 .measure-search-panel {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -812,188 +816,81 @@
   color: var(--text-muted);
 }
 
-.measure-dax-card {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.measure-dax-item {
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.measure-dax-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 10px;
-  background: var(--bg-subtle);
-  border-bottom: 1px solid var(--border-default);
-}
-
-.copy-code-btn {
+.measure-row-remove-btn {
   border: 1px solid var(--border-default);
   background: #fff;
+  color: var(--text-secondary);
   border-radius: var(--radius-sm);
-  padding: 5px 8px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   cursor: pointer;
-  color: var(--text-secondary);
 }
 
-.copy-code-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+.measure-row-remove-btn:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
-.measure-dax-item pre {
-  margin: 0;
-  padding: 10px;
-  background: #111827;
-  color: #e5e7eb;
-  white-space: pre-wrap;
-  font-family: Consolas, 'Courier New', monospace;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  min-height: 120px;
-}
-
-.dax-highlighted-code {
-  white-space: pre-wrap;
-  font-family: Consolas, 'Courier New', monospace;
-  font-size: 0.82rem;
-  line-height: 1.5;
-}
-
-.dax-highlighted-line {
-  display: block;
-}
-
-.dax-token-keyword {
-  color: #93c5fd;
-  font-weight: 700;
-}
-
-.dax-token-method {
-  color: #fbbf24;
-  font-weight: 700;
-}
-
-.dax-token-bracket {
-  color: #f87171;
-  font-weight: 700;
-}
-
-.measures-table-wrapper {
-  overflow-x: auto;
-}
-
-.measures-changes-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9em;
-}
-
-.measures-changes-table th,
-.measures-changes-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-default);
-}
-
-.measures-changes-table th {
-  background: var(--color-dark);
-  color: #fff;
-  font-weight: 600;
-  position: sticky;
-  top: 0;
-}
-
-.measures-changes-table code {
-  background: var(--bg-subtle);
-  padding: 3px 6px;
-  border-radius: 3px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.95em;
-}
-
-.formula-cell {
-  max-width: 250px;
-}
-
-.formula-preview {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: 'Courier New', monospace;
-  font-size: 0.85em;
-}
-
-.checkbox-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.checkbox-label {
+.req-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.48);
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: normal !important;
-  cursor: pointer;
-  margin-bottom: 0 !important;
+  justify-content: center;
+  z-index: 60;
+  padding: 16px;
 }
 
-.checkbox-label input[type="checkbox"] {
-  width: auto !important;
-  cursor: pointer;
-}
-
-.input-small {
+.req-modal-card {
   width: 100%;
-  padding: 6px 8px !important;
-  font-size: 0.9em !important;
-  margin-bottom: 5px;
-}
-
-.textarea-small {
-  width: 100%;
-  padding: 6px 8px !important;
-  font-size: 0.9em !important;
-  resize: vertical;
-}
-
-/* Attributes section */
-.attributes-section {
-  margin-top: 15px;
-}
-
-.attributes-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.attributes-list li {
-  padding: 10px 15px;
-  background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
-  border-left: 3px solid var(--color-success);
-}
-
-.attributes-list code {
+  max-width: 560px;
   background: var(--bg-card);
-  padding: 3px 6px;
-  border-radius: 3px;
-  font-family: 'Courier New', monospace;
-  margin-right: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.req-modal-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.req-modal-header h5 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.req-modal-close-btn {
+  border: 1px solid var(--border-default);
+  background: #fff;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.req-modal-body {
+  padding: 14px;
+}
+
+.req-modal-footer {
+  border-top: 1px solid var(--border-default);
+  padding: 12px 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* New measures/attributes sections */
@@ -1308,10 +1205,6 @@
 
   .work-block-header button {
     width: 100%;
-  }
-
-  .measure-dax-card {
-    grid-template-columns: 1fr;
   }
 
   .work-blocks-workspace {

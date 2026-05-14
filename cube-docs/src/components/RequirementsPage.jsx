@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown, ChevronRight, Copy, File, FileText, Plus, Save, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, File, FileText, Plus, Save, Trash2, X } from 'lucide-react';
 import { CUBE_DATA, getEntity, getMeasuresForGroup, getRelationsForEntity } from '../mockData';
 import { RequirementV2, WorkBlock, MeasureChange, NewMeasure, NewAttribute } from '../types';
 import { exportToDocxV2, downloadFile } from '../exportService';
 import { storageService } from '../storageService';
 import { MasterTable } from './MasterTable';
-import { tokenizeDaxExpression } from '../utils/daxFormatter';
 import './RequirementsPage.css';
 
 const collator = new Intl.Collator(['ru-RU', 'en-US'], { sensitivity: 'base', numeric: true });
@@ -270,6 +269,9 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
   const [expandedFacts, setExpandedFacts] = useState(true);
   const [expandedDimensions, setExpandedDimensions] = useState(true);
   const [measureSearch, setMeasureSearch] = useState('');
+  const [isAddMeasureModalOpen, setAddMeasureModalOpen] = useState(false);
+  const [newChangedMeasureName, setNewChangedMeasureName] = useState('');
+  const [newChangedMeasureFormula, setNewChangedMeasureFormula] = useState('');
 
   const selectedEntity = block.entityId ? getEntity(block.entityId) : null;
   const isFactTable = selectedEntity?.id?.startsWith('F');
@@ -381,10 +383,44 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
     setMeasureSearch('');
   };
 
+  const updateMeasureChange = (measureId, updates) => {
+    onUpdate({
+      measureChanges: block.measureChanges.map((item) => (item.measureId === measureId ? { ...item, ...updates } : item))
+    });
+  };
+
+  const removeMeasureChange = (measureId) => {
+    onUpdate({ measureChanges: block.measureChanges.filter((item) => item.measureId !== measureId) });
+  };
+
+  const handleOpenAddMeasureModal = () => {
+    if (!block.entityId) return;
+    setNewChangedMeasureName('');
+    setNewChangedMeasureFormula('');
+    setAddMeasureModalOpen(true);
+  };
+
+  const handleCloseAddMeasureModal = () => {
+    setAddMeasureModalOpen(false);
+    setNewChangedMeasureName('');
+    setNewChangedMeasureFormula('');
+  };
+
+  const handleAddChangedMeasure = () => {
+    const translation = newChangedMeasureName.trim();
+    const formula = newChangedMeasureFormula.trim();
+    if (!translation || !formula) return;
+
+    const measureId = `MC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const newChange = new MeasureChange(measureId, translation, translation, formula, true, translation, true, formula);
+    onUpdate({ measureChanges: [...block.measureChanges, newChange] });
+    handleCloseAddMeasureModal();
+  };
+
   const addMeasureToChanges = (measure) => {
     const newChange = new MeasureChange(
       measure.id || measure.name,
-      measure.name,
+      measure.name || '',
       measure.translation || '',
       measure.expression || '',
       false,
@@ -393,33 +429,6 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
       ''
     );
     onUpdate({ measureChanges: [...block.measureChanges, newChange] });
-  };
-
-  const updateMeasureChange = (measureId, updates) => {
-    onUpdate({
-      measureChanges: block.measureChanges.map((item) => (item.measureId === measureId ? { ...item, ...updates } : item))
-    });
-  };
-
-  const handleMeasureAction = (actionId, row) => {
-    if (actionId === 'translation') {
-      updateMeasureChange(row.measureId, { needsRename: true, needsFormulaChange: false });
-      return;
-    }
-    if (actionId === 'formula') {
-      updateMeasureChange(row.measureId, { needsRename: false, needsFormulaChange: true });
-      return;
-    }
-    if (actionId === 'both') {
-      updateMeasureChange(row.measureId, { needsRename: true, needsFormulaChange: true });
-      return;
-    }
-    updateMeasureChange(row.measureId, {
-      needsRename: false,
-      needsFormulaChange: false,
-      newTranslation: '',
-      newExpression: ''
-    });
   };
 
   const updateNewMeasure = (index, updates) => {
@@ -559,7 +568,13 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
 
         {block.type === 'existing' && isFactTable && (
           <div className="measures-changes-section">
-            <h4>Изменяемые показатели</h4>
+            <div className="section-header">
+              <h4>Изменяемые показатели</h4>
+              <button type="button" className="btn-secondary" onClick={handleOpenAddMeasureModal} disabled={!block.entityId}>
+                <Plus size={15} />
+                <span>Добавить показатель</span>
+              </button>
+            </div>
             <div className="measure-search-panel">
               <input
                 type="text"
@@ -583,24 +598,26 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
               </div>
             </div>
             <MasterTable
-              data={block.measureChanges.map((item) => ({
-                ...item,
-                changeMode: item.needsRename && item.needsFormulaChange
-                  ? 'Перевод и формула'
-                  : item.needsRename
-                  ? 'Перевод'
-                  : item.needsFormulaChange
-                  ? 'Формула'
-                  : 'Без изменений'
-              }))}
+              data={block.measureChanges}
               getRowId={(row) => row.measureId}
-              searchableFields={['originalName', 'originalTranslation', 'originalExpression']}
+              showSearch={false}
               columns={[
-                { key: 'originalName', label: 'Название', render: (value) => <code>{value}</code> },
-                { key: 'originalTranslation', label: 'Текущий перевод' },
                 {
-                  key: 'newTranslation',
-                  label: 'Новый перевод',
+                  key: 'originalName',
+                  label: 'Название',
+                  sortable: false,
+                  render: (value, row) => (
+                    <input
+                      className="master-table-input"
+                      value={value || ''}
+                      placeholder="Введите название"
+                      onChange={(event) => updateMeasureChange(row.measureId, { originalName: event.target.value })}
+                    />
+                  )
+                },
+                {
+                  key: 'originalTranslation',
+                  label: 'Текущий перевод',
                   sortable: false,
                   render: (value, row) => (
                     <input
@@ -609,16 +626,17 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
                       placeholder="Введите перевод"
                       onChange={(event) =>
                         updateMeasureChange(row.measureId, {
+                          originalTranslation: event.target.value,
                           newTranslation: event.target.value,
-                          needsRename: Boolean(event.target.value)
+                          needsRename: Boolean(event.target.value.trim())
                         })
                       }
                     />
                   )
                 },
                 {
-                  key: 'newExpression',
-                  label: 'Новая формула',
+                  key: 'originalExpression',
+                  label: 'Текущая формула',
                   sortable: false,
                   render: (value, row) => (
                     <textarea
@@ -628,29 +646,80 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
                       placeholder="Введите формулу DAX"
                       onChange={(event) =>
                         updateMeasureChange(row.measureId, {
+                          originalExpression: event.target.value,
                           newExpression: event.target.value,
-                          needsFormulaChange: Boolean(event.target.value)
+                          needsFormulaChange: Boolean(event.target.value.trim())
                         })
                       }
                     />
                   )
+                },
+                {
+                  key: 'remove',
+                  label: '',
+                  sortable: false,
+                  render: (_, row) => (
+                    <button
+                      type="button"
+                      className="measure-row-remove-btn"
+                      onClick={() => removeMeasureChange(row.measureId)}
+                      aria-label="Удалить строку"
+                    >
+                      <X size={14} />
+                    </button>
+                  )
                 }
               ]}
-              rowActions={[
-                { id: 'translation', label: 'Изменить перевод', onClick: (row) => handleMeasureAction('translation', row) },
-                { id: 'formula', label: 'Изменить формулу', onClick: (row) => handleMeasureAction('formula', row) },
-                { id: 'both', label: 'Изменить перевод и формулу', onClick: (row) => handleMeasureAction('both', row) },
-                { id: 'remove', label: 'Убрать из таблицы изменений', variant: 'danger', onClick: (row) => onUpdate({ measureChanges: block.measureChanges.filter((item) => item.measureId !== row.measureId) }) },
-                { id: 'reset', label: 'Сбросить', variant: 'danger', onClick: (row) => handleMeasureAction('reset', row) }
-              ]}
-              renderExpanded={(row) => (
-                <MeasureDaxCard originalExpression={row.originalExpression} newExpression={row.newExpression} />
-              )}
             />
+            {isAddMeasureModalOpen && (
+              <div className="req-modal-overlay" role="dialog" aria-modal="true">
+                <div className="req-modal-card">
+                  <div className="req-modal-header">
+                    <h5>Добавить показатель</h5>
+                    <button type="button" className="req-modal-close-btn" onClick={handleCloseAddMeasureModal}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <div className="req-modal-body">
+                    <div className="form-group">
+                      <label>Название (перевод) *</label>
+                      <input
+                        type="text"
+                        value={newChangedMeasureName}
+                        onChange={(event) => setNewChangedMeasureName(event.target.value)}
+                        placeholder="Введите название показателя"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Формула *</label>
+                      <textarea
+                        rows={4}
+                        value={newChangedMeasureFormula}
+                        onChange={(event) => setNewChangedMeasureFormula(event.target.value)}
+                        placeholder="Введите формулу DAX"
+                      />
+                    </div>
+                  </div>
+                  <div className="req-modal-footer">
+                    <button type="button" className="btn-secondary" onClick={handleCloseAddMeasureModal}>
+                      Отмена
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={handleAddChangedMeasure}
+                      disabled={!newChangedMeasureName.trim() || !newChangedMeasureFormula.trim()}
+                    >
+                      Сохранить
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {(block.entityType === 'fact' || isFactTable) && (
+        {block.type === 'new' && block.entityType === 'fact' && (
           <div className="new-measures-section">
             <div className="section-header">
               <h4>Новые показатели</h4>
@@ -782,62 +851,6 @@ const WorkBlockEditor = ({ block, index, onUpdate, onRemove }) => {
         </div>
       </div>
     </div>
-  );
-};
-
-const MeasureDaxCard = ({ originalExpression, newExpression }) => {
-  const [copied, setCopied] = useState('');
-
-  const copyValue = async (value, key) => {
-    try {
-      await navigator.clipboard.writeText(value || '');
-      setCopied(key);
-      setTimeout(() => setCopied(''), 1200);
-    } catch (error) {
-      console.error('Copy failed', error);
-    }
-  };
-
-  return (
-    <div className="measure-dax-card">
-      <div className="measure-dax-item">
-        <div className="measure-dax-header">
-          <strong>Текущая формула</strong>
-          <button type="button" className="copy-code-btn" onClick={() => copyValue(originalExpression, 'current')}>
-            {copied === 'current' ? <Check size={14} /> : <Copy size={14} />}
-            <span>{copied === 'current' ? 'Скопировано' : 'Копировать'}</span>
-          </button>
-        </div>
-        <pre>{originalExpression ? <DaxHighlightedCode expression={originalExpression} /> : 'Формула не задана'}</pre>
-      </div>
-      <div className="measure-dax-item">
-        <div className="measure-dax-header">
-          <strong>Новая формула</strong>
-          <button type="button" className="copy-code-btn" onClick={() => copyValue(newExpression, 'new')}>
-            {copied === 'new' ? <Check size={14} /> : <Copy size={14} />}
-            <span>{copied === 'new' ? 'Скопировано' : 'Копировать'}</span>
-          </button>
-        </div>
-        <pre>{newExpression ? <DaxHighlightedCode expression={newExpression} /> : 'Новая формула пока не заполнена'}</pre>
-      </div>
-    </div>
-  );
-};
-
-const DaxHighlightedCode = ({ expression }) => {
-  const tokenLines = tokenizeDaxExpression(expression || '');
-  return (
-    <code className="dax-highlighted-code">
-      {tokenLines.map((line, lineIndex) => (
-        <span key={`line-${lineIndex}`} className="dax-highlighted-line">
-          {line.map((token, tokenIndex) => (
-            <span key={`line-${lineIndex}-${tokenIndex}`} className={`dax-token dax-token-${token.type}`}>
-              {token.value}
-            </span>
-          ))}
-        </span>
-      ))}
-    </code>
   );
 };
 
