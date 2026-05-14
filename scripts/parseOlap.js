@@ -15,20 +15,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function main() {
-  console.log('🔍 Loading OLAP model from olap.md...');
+  console.log('Loading OLAP model from olap.md...');
 
   const inputPath = resolve(__dirname, '..', 'olap.md');
   const result = await loadOlapModel(inputPath);
 
   if (!result.success) {
-    console.error('❌ Failed to load OLAP model:');
+    console.error('Failed to load OLAP model:');
     console.error(`   ${result.error}`);
     process.exit(1);
   }
 
   const model = result.model;
 
-  console.log('📊 Extracting model components...');
+  console.log('Extracting model components...');
   const tables = extractTables(model);
   const rawRelationships = extractRelationships(model);
   const cultures = extractCultures(model);
@@ -36,13 +36,13 @@ async function main() {
   console.log(`   Found ${tables.length} tables`);
   console.log(`   Found ${rawRelationships.length} relationships`);
 
-  console.log('🌐 Building translation index...');
+  console.log('Building translation index...');
   const translationIndex = buildTranslationIndex(cultures);
 
-  console.log('🔄 Building relationships...');
+  console.log('Building relationships...');
   const { tableRelations } = buildRelationships(rawRelationships);
 
-  console.log('✨ Transforming entities...');
+  console.log('Transforming entities...');
   const entities = tables.map(table =>
     transformTable(table, translationIndex, tableRelations)
   );
@@ -53,17 +53,17 @@ async function main() {
   console.log(`   ${factCount} fact tables`);
   console.log(`   ${dimensionCount} dimension tables`);
 
-  console.log('💾 Generating output...');
+  console.log('Generating output...');
   const outputPath = resolve(__dirname, '..', 'cube-docs', 'src', 'data', 'cubeData.json');
   const outputResult = await generateOutput(entities, tableRelations, outputPath);
 
   if (!outputResult.success) {
-    console.error('❌ Failed to generate output:');
+    console.error('Failed to generate output:');
     console.error(`   ${outputResult.error}`);
     process.exit(1);
   }
 
-  console.log('✅ Successfully generated cubeData.json');
+  console.log('Successfully generated cubeData.json');
   const stats = outputResult.stats;
   console.log(`   Entities: ${stats.entityCount}`);
   console.log(`   Facts: ${stats.factCount}`);
@@ -74,6 +74,6 @@ async function main() {
 }
 
 main().catch(error => {
-  console.error('❌ Unexpected error:', error);
+  console.error('Unexpected error:', error);
   process.exit(1);
 });

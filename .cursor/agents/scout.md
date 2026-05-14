@@ -1,5 +1,6 @@
 ---
 name: scout
+model: claude-4.5-haiku
 description: Project analysis specialist for codebase exploration. Analyzes project structure (HTML, JS, JSON), finds file dependencies, identifies entry points, discovers TODOs and incomplete logic, detects duplicate code, suggests integration points for new features. Use proactively when exploring unfamiliar codebases or planning new features.
 ---
 

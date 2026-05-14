@@ -1,5 +1,6 @@
 ---
 name: executor
+model: claude-4.5-sonnet-thinking
 description: Frontend implementation specialist for modern JavaScript (ES6+/React). Implements DOM manipulation, File API, markdown parsing, JSON generation, UI events, forms (CRUD), file exports (docx/markdown). Works with Node.js build tools (Vite/Webpack) but creates browser-runnable code without backend dependencies. Use proactively when implementing features.
 ---
 
