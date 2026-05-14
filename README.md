@@ -1,22 +1,21 @@
-# 📊 Cube Documentation Tool
+# Cube Documentation Tool
 
-Система управления документацией OLAP куба данных.
+Система управления документацией OLAP-куба данных.
 
-## 🚀 Быстрый старт
+## Быстрый старт
 
 ```bash
-# 1. Установите Node.js с https://nodejs.org/
+# 1. Установите Node.js: https://nodejs.org/
 # 2. Установите зависимости
-cd cube-docs
 npm install
 
 # 3. Запустите приложение
 npm run dev
 ```
 
-Приложение откроется на http://localhost:3000
+Приложение откроется по адресу: http://localhost:3000
 
-## 📖 Возможности
+## Возможности
 
 ### Страница "Каталог"
 - Просмотр всех фактов (F) и измерений (D)
@@ -29,20 +28,14 @@ npm run dev
 - Добавление новых мер и измерений
 - Управление связями
 - Экспорт в DOCX и Markdown
-- Сохранение в браузер
+- Сохранение данных в браузере
 
-## 📚 Документация
-
-- **START_HERE.md** - подробное руководство
-- **QUICK_START.md** - установка за 5 минут
-- **README_RU.md** - краткий обзор
-
-## 🔧 Основные команды
+## Основные команды
 
 ```bash
-npm run dev      # Разработка
-npm run build    # Production сборка
-npm run preview  # Просмотр production версии
+npm run dev      # Режим разработки
+npm run build    # Production-сборка
+npm run preview  # Просмотр production-версии
 ```
 
 
